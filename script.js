@@ -1,184 +1,151 @@
-const gameboard = (function () {
-  const cols = 3;
-  const rows = 3;
-  let board = [];
+const Player = (marker, name) => ({ marker, name });
 
-  function init() {
-    board = Array(rows * cols).fill(" ");
-  }
-
-  function getBoard() {
-    return board;
-  }
-
-  function setCell(index, marker) {
-    board[index] = marker;
-  }
-
-  function getCols() {
-    return cols;
-  }
-
-  function getRows() {
-    return rows;
-  }
-
-  return {
-    init,
-    getBoard,
-    getCols,
-    getRows,
-    setCell,
-  };
+const gameBoard = (() => {
+  const board = Array(9).fill("");
+  const getBoard = () => board;
+  const updateBoard = (index, marker) => (board[index] = marker);
+  const resetBoard = () => board.fill("");
+  return { getBoard, updateBoard, resetBoard };
 })();
 
-function Player(marker, name) {
-  return { marker, name };
-}
-
-const gameController = (function () {
-  let players = [];
-  let currentTurn = 0;
-  let valid = false;
-  let gameActive = false;
-
-  const winConditions = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-
-  function createNewPlayer(player) {
-    players.push(player);
-  }
-
-  function verifyGame() {
-    const hasX = players.some((p) => p.marker.toLowerCase() === "x");
-    const hasO = players.some((p) => p.marker.toLowerCase() === "o");
-    valid = players.length === 2 && hasX && hasO;
-  }
-
-  function _checkWin(player) {
-    const board = gameboard.getBoard();
-    return winConditions.some(
-      ([a, b, c]) =>
-        board[a] === player.marker &&
-        board[b] === player.marker &&
-        board[c] === player.marker
-    );
-  }
-
-  function _nextTurn() {
-    currentTurn = currentTurn === 0 ? 1 : 0;
-  }
-
-  function handleClick(e) {
-    const index = parseInt(e.target.dataset.index);
-    const board = gameboard.getBoard();
-    if (!gameActive || board[index] !== " ") return;
-
-    const currentPlayer = players[currentTurn];
-    gameboard.setCell(index, currentPlayer.marker);
-    displayController.updateCell(index, currentPlayer.marker);
-
-    if (_checkWin(currentPlayer)) {
-      gameActive = false;
-      setTimeout(() => alert(`${currentPlayer.name} wins!`), 10);
-      return;
-    }
-
-    if (board.every((cell) => cell !== " ")) {
-      gameActive = false;
-      setTimeout(() => alert("It's a tie!"), 10);
-      return;
-    }
-
-    _nextTurn();
-  }
-
-  function startGame() {
-    if (!valid) {
-      console.error(
-        "INVALID GAME SETTINGS. Ensure there are two players with markers 'X' and 'O'."
-      );
-      alert(
-        "INVALID GAME SETTINGS. Ensure there are two players with markers 'X' and 'O'."
-      );
-      return;
-    }
-
-    gameboard.init();
-    displayController.createBoardUI(handleClick);
-    gameActive = true;
-    currentTurn = players.findIndex((p) => p.marker.toLowerCase() === "x");
-  }
-
-  function reset() {
-    gameboard.init();
-    currentTurn = 0;
-    for (let i = 0; i < 9; i++) {
-      displayController.updateCell(i, " ");
-    }
-    gameActive = true;
-  }
-
-  return {
-    createNewPlayer,
-    verifyGame,
-    startGame,
-    reset,
+const displayController = (() => {
+  const boardElement = document.querySelector(".board");
+  const renderBoard = () => {
+    boardElement.innerHTML = "";
+    gameBoard.getBoard().forEach((cell, index) => {
+      const div = document.createElement("div");
+      div.classList.add("cell");
+      div.dataset.index = index;
+      div.textContent = cell;
+      boardElement.appendChild(div);
+    });
   };
-})();
 
-const displayController = (function () {
-  const resetButton = document.querySelector(".reset");
-  resetButton.addEventListener("click", gameController.reset);
+  const updateCell = (index, marker) => {
+    const cell = boardElement.querySelector(`[data-index='${index}']`);
+    if (cell) cell.textContent = marker;
+  };
 
-  const startButton = document.querySelector(".start");
-  startButton.addEventListener("click", function (e) {
-    gameController.verifyGame();
-    gameController.startGame();
+  boardElement.addEventListener("click", (e) => {
+    const index = e.target.dataset.index;
+    if (index !== undefined) gameController.playRound(Number(index));
   });
 
-  const addNewPlayerBtn = document.querySelector(".add-player");
-
-
-  function createBoardUI(clickHandler) {
-    const board = document.querySelector(".board");
-    board.innerHTML = "";
-
-    for (let i = 0; i < gameboard.getBoard().length; i++) {
-      const cell = document.createElement("div");
-      cell.classList.add("cell");
-      cell.dataset.index = i;
-      cell.addEventListener("click", clickHandler);
-      board.appendChild(cell);
-    }
-  }
-
-  function updateCell(index, value) {
-    const cell = document.querySelector(`.cell[data-index="${index}"]`);
-    if (cell) cell.textContent = value;
-  }
-
-  return {
-    createBoardUI,
-    updateCell,
-  };
+  return { renderBoard, updateCell };
 })();
 
-function addPlayer(name, marker) {
-  const name = prompt("Enter player name:");
-  const marker = prompt(`Enter marker for ${name} (X or O):`);
-  if (name && marker) {
-    gameController.createNewPlayer(Player(marker.trim(), name.trim()));
-  }
-}
+const gameController = (() => {
+  const players = [];
+  let currentPlayerIndex = 0;
+  let gameOver = false;
 
-//addPlayer();
-//addPlayer();
+  const getPlayers = () => players;
+
+  const createNewPlayer = (player) => {
+    if (players.length < 2) players.push(player);
+    if (players.length === 2) start();
+  };
+
+  const start = () => {
+    gameBoard.resetBoard();
+    displayController.renderBoard();
+    currentPlayerIndex = 0;
+    gameOver = false;
+  };
+
+  const resetGame = () => {
+    gameBoard.resetBoard();
+    displayController.renderBoard();
+    currentPlayerIndex = 0;
+    gameOver = false;
+  };
+
+  const playRound = (index) => {
+    if (players.length < 2) {
+      alert("Please add two players to start the game.");
+      return;
+    }
+    if (gameOver || gameBoard.getBoard()[index] !== "") return;
+
+    const currentPlayer = players[currentPlayerIndex];
+    gameBoard.updateBoard(index, currentPlayer.marker);
+    displayController.updateCell(index, currentPlayer.marker);
+
+    if (checkWin(currentPlayer.marker)) {
+      setTimeout(() => alert(`${currentPlayer.name} wins!!`), 100);
+      gameOver = true;
+      return;
+    }
+
+    if (gameBoard.getBoard().every((cell) => cell !== "")) {
+      setTimeout(() => alert("It's a tie!"), 100);
+      gameOver = true;
+      return;
+    }
+
+    currentPlayerIndex = 1 - currentPlayerIndex;
+  };
+
+  const checkWin = (marker) => {
+    const b = gameBoard.getBoard();
+    const winPatterns = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+    return winPatterns.some((pattern) => pattern.every((i) => b[i] === marker));
+  };
+
+  return { createNewPlayer, playRound, getPlayers, start, resetGame };
+})();
+
+const form = document.querySelector("form");
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  if (gameController.getPlayers().length >= 2) {
+    alert("Two players already added. Please reset to add new players.");
+    return;
+  }
+
+  const nameInput = form.querySelector("#player-name");
+  const markerInput = form.querySelector("input[name='marker']:checked");
+
+  const name = nameInput.value.trim();
+  const marker = markerInput?.value;
+
+  if (!name || !marker) {
+    alert("Please enter both name and marker.");
+    return;
+  }
+
+  const markerUsed = gameController
+    .getPlayers()
+    .some((p) => p.marker.toLowerCase() === marker.toLowerCase());
+
+  if (markerUsed) {
+    alert(`Marker '${marker}' is already taken!`);
+    return;
+  }
+
+  gameController.createNewPlayer(Player(marker, name));
+  form.reset();
+});
+
+document.querySelector(".start").addEventListener("click", () => {
+  if (gameController.getPlayers().length < 2) {
+    alert("Please add two players before starting.");
+  } else {
+    gameController.start();
+  }
+});
+
+document
+  .querySelector(".reset")
+  .addEventListener("click", gameController.resetGame);
