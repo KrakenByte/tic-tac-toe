@@ -1,184 +1,151 @@
-const gameboard = (function () {
-  const cols = 3;
-  const rows = 3;
-  let board = [];
-  //intialize board
-  function init() {
-    board = [];
-    const cellCount = rows * cols;
-    for (let i = 0; i < cellCount; i++) {
-      board.push(" ");
-    }
-    console.log("Initial board: ", board);
-  }
-  function getBoard() {
-    return board;
-  }
-  function setCell(cell, marker) {
-    board[cell - 1] = marker;
-  }
-  function getCols() {
-    return cols;
-  }
-  function getRows() {
-    return rows;
-  }
-  return {
-    init,
-    getBoard,
-    getCols,
-    getRows,
-    setCell,
-  };
+const Player = (marker, name) => ({ marker, name });
+
+const gameBoard = (() => {
+  const board = Array(9).fill("");
+  const getBoard = () => board;
+  const updateBoard = (index, marker) => (board[index] = marker);
+  const resetBoard = () => board.fill("");
+  return { getBoard, updateBoard, resetBoard };
 })();
 
-//player factory
-function Player(marker, name) {
-  return {
-    marker: marker,
-    name: name,
+const displayController = (() => {
+  const boardElement = document.querySelector(".board");
+  const renderBoard = () => {
+    boardElement.innerHTML = "";
+    gameBoard.getBoard().forEach((cell, index) => {
+      const div = document.createElement("div");
+      div.classList.add("cell");
+      div.dataset.index = index;
+      div.textContent = cell;
+      boardElement.appendChild(div);
+    });
   };
-}
 
-const gameController = (function () {
-  let players = [];
-  let valid = false;
-  function createNewPlayer(player) {
-    players.push(player);
-  }
-  let currentTurn = 0;
-  function verifyGame() {
-    valid = players.length === 2;
-  }
-  const winConditions = [
-    // rows
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    // columns
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    // diagonals
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  function _checkWin(player) {
-    const markerToCheck = player.marker;
-    const board = gameboard.getBoard();
+  const updateCell = (index, marker) => {
+    const cell = boardElement.querySelector(`[data-index='${index}']`);
+    if (cell) cell.textContent = marker;
+  };
 
-    for (const condition of winConditions) {
-      const [a, b, c] = condition;
+  boardElement.addEventListener("click", (e) => {
+    const index = e.target.dataset.index;
+    if (index !== undefined) gameController.playRound(Number(index));
+  });
 
-      if (
-        board[a] === markerToCheck &&
-        board[b] === markerToCheck &&
-        board[c] === markerToCheck
-      ) {
-        return true;
-      }
-    }
+  return { renderBoard, updateCell };
+})();
 
-    return false;
-  }
-  function startGame() {
-    if (!valid) {
-      console.log("INVALID GAME SETTINGS.");
+const gameController = (() => {
+  const players = [];
+  let currentPlayerIndex = 0;
+  let gameOver = false;
+
+  const getPlayers = () => players;
+
+  const createNewPlayer = (player) => {
+    if (players.length < 2) players.push(player);
+    if (players.length === 2) start();
+  };
+
+  const start = () => {
+    gameBoard.resetBoard();
+    displayController.renderBoard();
+    currentPlayerIndex = 0;
+    gameOver = false;
+  };
+
+  const resetGame = () => {
+    gameBoard.resetBoard();
+    displayController.renderBoard();
+    currentPlayerIndex = 0;
+    gameOver = false;
+  };
+
+  const playRound = (index) => {
+    if (players.length < 2) {
+      alert("Please add two players to start the game.");
       return;
-    } else {
-      //meat and bone of the game
-      let gameActive = true;
-      let turnsPlayed = 0;
-      console.log("Game starts now.");
-      players[0].marker === "x" ? (currentTurn = 0) : (currentTurn = 1);
-      while (gameActive) {
-        console.log(
-          `Turn ${turnsPlayed + 1}: ${players[currentTurn].name}'s move.`
-        );
-        const cell = parseInt(
-          prompt(
-            `${players[currentTurn].name} chooses where to place their marker. (1-9)`
-          )
-        );
-        if (
-          isNaN(cell) ||
-          cell < 1 ||
-          cell > 9 ||
-          gameboard.getBoard()[cell - 1] !== " "
-        ) {
-          console.log("Invalid move. Try again.");
-          continue;
-        }
-
-        gameboard.setCell(cell, players[currentTurn].marker);
-        displayController.renderBoard();
-
-        if (_checkWin(players[currentTurn])) {
-          console.log(`${players[currentTurn].name} wins!`);
-          break;
-        }
-
-        turnsPlayed++;
-        if (turnsPlayed >= 9) {
-          console.log("It's a tie!");
-          break;
-        }
-
-        _nextTurn();
-      }
     }
-  }
+    if (gameOver || gameBoard.getBoard()[index] !== "") return;
 
-  function _nextTurn() {
-    currentTurn == 1 ? (currentTurn = 0) : (currentTurn = 1);
-  }
-  return {
-    createNewPlayer,
-    verifyGame,
-    startGame,
+    const currentPlayer = players[currentPlayerIndex];
+    gameBoard.updateBoard(index, currentPlayer.marker);
+    displayController.updateCell(index, currentPlayer.marker);
+
+    if (checkWin(currentPlayer.marker)) {
+      setTimeout(() => alert(`${currentPlayer.name} wins!!`), 100);
+      gameOver = true;
+      return;
+    }
+
+    if (gameBoard.getBoard().every((cell) => cell !== "")) {
+      setTimeout(() => alert("It's a tie!"), 100);
+      gameOver = true;
+      return;
+    }
+
+    currentPlayerIndex = 1 - currentPlayerIndex;
   };
+
+  const checkWin = (marker) => {
+    const b = gameBoard.getBoard();
+    const winPatterns = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+    return winPatterns.some((pattern) => pattern.every((i) => b[i] === marker));
+  };
+
+  return { createNewPlayer, playRound, getPlayers, start, resetGame };
 })();
 
-const displayController = (function () {
-  function _make2D(array, rows, cols) {
-    let output = [];
-    let counter = 0;
-    for (let i = 0; i < rows; i++) {
-      output.push([]);
-      for (let j = 0; j < cols; j++) {
-        output[i].push(array[counter]);
-        counter++;
-      }
-    }
-    return output;
+const form = document.querySelector("form");
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  if (gameController.getPlayers().length >= 2) {
+    alert("Two players already added. Please reset to add new players.");
+    return;
   }
 
-  function renderBoard() {
-    let rows = gameboard.getRows();
-    let cols = gameboard.getCols();
-    let newBoard = _make2D(gameboard.getBoard(), rows, cols);
-    console.log("CURRENT BOARD: ");
-    for (let i = 0; i < rows; i++) {
-      let rowToRender = "";
-      for (let j = 0; j < cols; j++) {
-        rowToRender += newBoard[i][j] + " | ";
-      }
-      console.log(rowToRender);
-      console.log("-------------------------");
-    }
-  }
-  return {
-    renderBoard,
-  };
-})();
+  const nameInput = form.querySelector("#player-name");
+  const markerInput = form.querySelector("input[name='marker']:checked");
 
-gameboard.init();
-function addPlayer() {
-  const name = prompt("Enter player name");
-  const marker = prompt("Enter player marker");
-  gameController.createNewPlayer(new Player(marker, name));
-}
-addPlayer();
-addPlayer();
-gameController.verifyGame();
-gameController.startGame();
+  const name = nameInput.value.trim();
+  const marker = markerInput?.value;
+
+  if (!name || !marker) {
+    alert("Please enter both name and marker.");
+    return;
+  }
+
+  const markerUsed = gameController
+    .getPlayers()
+    .some((p) => p.marker.toLowerCase() === marker.toLowerCase());
+
+  if (markerUsed) {
+    alert(`Marker '${marker}' is already taken!`);
+    return;
+  }
+
+  gameController.createNewPlayer(Player(marker, name));
+  form.reset();
+});
+
+document.querySelector(".start").addEventListener("click", () => {
+  if (gameController.getPlayers().length < 2) {
+    alert("Please add two players before starting.");
+  } else {
+    gameController.start();
+  }
+});
+
+document
+  .querySelector(".reset")
+  .addEventListener("click", gameController.resetGame);
