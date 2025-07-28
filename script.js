@@ -2,27 +2,27 @@ const gameboard = (function () {
   const cols = 3;
   const rows = 3;
   let board = [];
-  //intialize board
+
   function init() {
-    board = [];
-    const cellCount = rows * cols;
-    for (let i = 0; i < cellCount; i++) {
-      board.push(" ");
-    }
-    console.log("Initial board: ", board);
+    board = Array(rows * cols).fill(" ");
   }
+
   function getBoard() {
     return board;
   }
-  function setCell(cell, marker) {
-    board[cell - 1] = marker;
+
+  function setCell(index, marker) {
+    board[index] = marker;
   }
+
   function getCols() {
     return cols;
   }
+
   function getRows() {
     return rows;
   }
+
   return {
     init,
     getBoard,
@@ -32,153 +32,153 @@ const gameboard = (function () {
   };
 })();
 
-//player factory
 function Player(marker, name) {
-  return {
-    marker: marker,
-    name: name,
-  };
+  return { marker, name };
 }
 
 const gameController = (function () {
   let players = [];
-  let valid = false;
-  function createNewPlayer(player) {
-    players.push(player);
-  }
   let currentTurn = 0;
-  function verifyGame() {
-    valid = players.length === 2;
-  }
+  let valid = false;
+  let gameActive = false;
+
   const winConditions = [
-    // rows
     [0, 1, 2],
     [3, 4, 5],
     [6, 7, 8],
-    // columns
     [0, 3, 6],
     [1, 4, 7],
     [2, 5, 8],
-    // diagonals
     [0, 4, 8],
     [2, 4, 6],
   ];
-  function _checkWin(player) {
-    const markerToCheck = player.marker;
-    const board = gameboard.getBoard();
 
-    for (const condition of winConditions) {
-      const [a, b, c] = condition;
-
-      if (
-        board[a] === markerToCheck &&
-        board[b] === markerToCheck &&
-        board[c] === markerToCheck
-      ) {
-        return true;
-      }
-    }
-
-    return false;
+  function createNewPlayer(player) {
+    players.push(player);
   }
-  function startGame() {
-    if (!valid) {
-      console.log("INVALID GAME SETTINGS.");
-      return;
-    } else {
-      //meat and bone of the game
-      let gameActive = true;
-      let turnsPlayed = 0;
-      console.log("Game starts now.");
-      players[0].marker === "x" ? (currentTurn = 0) : (currentTurn = 1);
-      while (gameActive) {
-        console.log(
-          `Turn ${turnsPlayed + 1}: ${players[currentTurn].name}'s move.`
-        );
-        const cell = parseInt(
-          prompt(
-            `${players[currentTurn].name} chooses where to place their marker. (1-9)`
-          )
-        );
-        if (
-          isNaN(cell) ||
-          cell < 1 ||
-          cell > 9 ||
-          gameboard.getBoard()[cell - 1] !== " "
-        ) {
-          console.log("Invalid move. Try again.");
-          continue;
-        }
 
-        gameboard.setCell(cell, players[currentTurn].marker);
-        displayController.renderBoard();
+  function verifyGame() {
+    const hasX = players.some((p) => p.marker.toLowerCase() === "x");
+    const hasO = players.some((p) => p.marker.toLowerCase() === "o");
+    valid = players.length === 2 && hasX && hasO;
+  }
 
-        if (_checkWin(players[currentTurn])) {
-          console.log(`${players[currentTurn].name} wins!`);
-          break;
-        }
-
-        turnsPlayed++;
-        if (turnsPlayed >= 9) {
-          console.log("It's a tie!");
-          break;
-        }
-
-        _nextTurn();
-      }
-    }
+  function _checkWin(player) {
+    const board = gameboard.getBoard();
+    return winConditions.some(
+      ([a, b, c]) =>
+        board[a] === player.marker &&
+        board[b] === player.marker &&
+        board[c] === player.marker
+    );
   }
 
   function _nextTurn() {
-    currentTurn == 1 ? (currentTurn = 0) : (currentTurn = 1);
+    currentTurn = currentTurn === 0 ? 1 : 0;
   }
+
+  function handleClick(e) {
+    const index = parseInt(e.target.dataset.index);
+    const board = gameboard.getBoard();
+    if (!gameActive || board[index] !== " ") return;
+
+    const currentPlayer = players[currentTurn];
+    gameboard.setCell(index, currentPlayer.marker);
+    displayController.updateCell(index, currentPlayer.marker);
+
+    if (_checkWin(currentPlayer)) {
+      gameActive = false;
+      setTimeout(() => alert(`${currentPlayer.name} wins!`), 10);
+      return;
+    }
+
+    if (board.every((cell) => cell !== " ")) {
+      gameActive = false;
+      setTimeout(() => alert("It's a tie!"), 10);
+      return;
+    }
+
+    _nextTurn();
+  }
+
+  function startGame() {
+    if (!valid) {
+      console.error(
+        "INVALID GAME SETTINGS. Ensure there are two players with markers 'X' and 'O'."
+      );
+      alert(
+        "INVALID GAME SETTINGS. Ensure there are two players with markers 'X' and 'O'."
+      );
+      return;
+    }
+
+    gameboard.init();
+    displayController.createBoardUI(handleClick);
+    gameActive = true;
+    currentTurn = players.findIndex((p) => p.marker.toLowerCase() === "x");
+  }
+
+  function reset() {
+    gameboard.init();
+    currentTurn = 0;
+    for (let i = 0; i < 9; i++) {
+      displayController.updateCell(i, " ");
+    }
+    gameActive = true;
+  }
+
   return {
     createNewPlayer,
     verifyGame,
     startGame,
+    reset,
   };
 })();
 
 const displayController = (function () {
-  function _make2D(array, rows, cols) {
-    let output = [];
-    let counter = 0;
-    for (let i = 0; i < rows; i++) {
-      output.push([]);
-      for (let j = 0; j < cols; j++) {
-        output[i].push(array[counter]);
-        counter++;
-      }
+  const resetButton = document.querySelector(".reset");
+  resetButton.addEventListener("click", gameController.reset);
+
+  const startButton = document.querySelector(".start");
+  startButton.addEventListener("click", function (e) {
+    gameController.verifyGame();
+    gameController.startGame();
+  });
+
+  const addNewPlayerBtn = document.querySelector(".add-player");
+
+
+  function createBoardUI(clickHandler) {
+    const board = document.querySelector(".board");
+    board.innerHTML = "";
+
+    for (let i = 0; i < gameboard.getBoard().length; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", clickHandler);
+      board.appendChild(cell);
     }
-    return output;
   }
 
-  function renderBoard() {
-    let rows = gameboard.getRows();
-    let cols = gameboard.getCols();
-    let newBoard = _make2D(gameboard.getBoard(), rows, cols);
-    console.log("CURRENT BOARD: ");
-    for (let i = 0; i < rows; i++) {
-      let rowToRender = "";
-      for (let j = 0; j < cols; j++) {
-        rowToRender += newBoard[i][j] + " | ";
-      }
-      console.log(rowToRender);
-      console.log("-------------------------");
-    }
+  function updateCell(index, value) {
+    const cell = document.querySelector(`.cell[data-index="${index}"]`);
+    if (cell) cell.textContent = value;
   }
+
   return {
-    renderBoard,
+    createBoardUI,
+    updateCell,
   };
 })();
 
-gameboard.init();
-function addPlayer() {
-  const name = prompt("Enter player name");
-  const marker = prompt("Enter player marker");
-  gameController.createNewPlayer(new Player(marker, name));
+function addPlayer(name, marker) {
+  const name = prompt("Enter player name:");
+  const marker = prompt(`Enter marker for ${name} (X or O):`);
+  if (name && marker) {
+    gameController.createNewPlayer(Player(marker.trim(), name.trim()));
+  }
 }
-addPlayer();
-addPlayer();
-gameController.verifyGame();
-gameController.startGame();
+
+//addPlayer();
+//addPlayer();

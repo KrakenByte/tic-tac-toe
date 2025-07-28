@@ -1,0 +1,54 @@
+body {
+  font-family: "Arial", sans-serif;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 50vh;
+  height: 50vh;
+  /* Add a max-width and max-height for very large screens */
+  max-width: 450px;
+  max-height: 450px;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: brown;
+}
+
+.cell {
+  background-color: aliceblue;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 10vh;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.controls {
+    margin-top: 1rem;
+    width: 50vh;
+    display: flex;
+    justify-content: space-around;
+}
+
+.reset, .start, .add-player {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+.add-player {
+  margin-top: 0.5rem;
+}
+
+.game-container {
+    width: max-content;
+}
+.game-parameters {
+  margin-top: 1rem;
+  & > * {
+    margin:0.5rem;
+  }
+}

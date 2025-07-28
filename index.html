@@ -1,11 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
     <title>Tic Tac Toe</title>
-</head>
-<body>
+  </head>
+
+  <body>
+    <div class="game-info">
+      <h3>A game of</h3>
+      <h1>Tic-Tac-Toe</h1>
+    </div>
+    <div class="game-container">
+      <div class="board"></div>
+      <div class="controls">
+        <button class="start">Start</button>
+        <button class="reset">Reset</button>
+      </div>
+    </div>
+    <div class="game-parameters">
+      <form>
+        <label for="player-name">
+          Player Name:
+          <input type="text" id="player-name" name="player-name" required />
+        </label>
+        <fieldset>
+          <legend>Choose Marker:</legend>
+          <label for="marker-x">
+            <input
+              type="radio"
+              id="marker-x"
+              name="marker"
+              value="X"
+              required
+            />
+            X
+          </label>
+          <label for="marker-o">
+            <input type="radio" id="marker-o" name="marker" value="O" />
+            O
+          </label>
+        </fieldset>
+        <button type="submit" class="add-player">Add Player</button>
+      </form>
+    </div>
     <script src="script.js"></script>
-</body>
+  </body>
 </html>
